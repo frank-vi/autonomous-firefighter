@@ -33,33 +33,30 @@
   <!-- *********************** -->
   <!-- * Arena configuration * -->
   <!-- *********************** -->
-  <arena size="4, 4, 1" center="0,0,0.5" positional_grid_size="8,8,1">
+  <arena size="6, 3, 0" center="0,0,0" positional_grid_size="8,8,1">
+  <floor id="f" source="image" path="floor.PNG" pixels_per_meter="100"/>
     
 	<!-- 4 walls to delimit arena -->
-	<box id="bn" size="0.1, 4, 0.2" movable="false">
-      <body position="1.9, 0, 0"  orientation="0,0,0" />
+	<box id="bn" size="0.05, 3, 0.2" movable="false">
+      <body position="3, 0, 0"  orientation="0,0,0" />
     </box>
-    <box id="bs" size="0.1, 4, 0.2" movable="false">
-      <body position="-1.9,0,0" orientation="0,0,0" />
+    <box id="bs" size="0.05, 3, 0.2" movable="false">
+      <body position="-3,0,0" orientation="0,0,0" />
     </box>
-    <box id="be" size="4, 0.1, 0.2" movable="false">
-      <body position="0,-1.9,0" orientation="0,0,0" />
+    <box id="be" size="6, 0.05, 0.2" movable="false">
+      <body position="0,-1.49,0" orientation="0,0,0" />
     </box>
-    <box id="bw" size="4, 0.1, 0.2" movable="false">
-      <body position="0,1.9,0" orientation="0,0,0" />
+    <box id="bw" size="6, 0.05, 0.2" movable="false">
+      <body position="0,1.49,0" orientation="0,0,0" />
     </box>
-	<box id="bcso" size="0.1, 1.5, 0.2" movable="false">
-      <body position="0.5, -1, 0"  orientation="0,0,0" />
+    <!-- walls in the house-->
+     <box id="garden_north_first" size="0.05, 0.90, 0.2" movable="false">
+      <body position="1.98,-1.05,0" orientation="0,0,0" />
     </box>
-	<box id="bcse" size="0.1, 1.5, 0.2" movable="false">
-      <body position="0.5, 1, 0"  orientation="0,0,0" />
+     <box id="bedliv" size="0.05, 0.90, 0.2" movable="false">
+      <body position="0.8148,-1.05,0" orientation="0,0,0" />
     </box>
-	<box id="bcno" size="0.1, 1, 0.2" movable="false">
-      <body position="-0.5, -1, 0"  orientation="0,0,0" />
-    </box>
-	<box id="bcne" size="0.1, 2, 0.2" movable="false">
-      <body position="-0.5, 1, 0"  orientation="0,0,0" />
-    </box>
+
 
 	<!-- light source at center of arena --> <!--
     <light id="light0"
