@@ -50,11 +50,35 @@
       <body position="0,1.49,0" orientation="0,0,0" />
     </box>
     <!-- walls in the house-->
-     <box id="garden_north_first" size="0.05, 0.90, 0.2" movable="false">
+    <box id="garden_north_first" size="0.05, 0.90, 0.2" movable="false">
       <body position="1.98,-1.05,0" orientation="0,0,0" />
     </box>
-     <box id="bedliv" size="0.05, 0.90, 0.2" movable="false">
+    <box id="bedliv" size="0.05, 0.90, 0.2" movable="false">
       <body position="0.8148,-1.05,0" orientation="0,0,0" />
+    </box>
+	<box id="guest_balcony" size="0.05, 1.62, 0.2" movable="false">
+      <body position="-1.93, 0.654, 0"  orientation="0,0,0" />
+    </box>
+	<box id="guest_kitchen" size="0.05, 0.93, 0.2" movable="false">
+      <body position="0.05, 1, 0"  orientation="0,0,0" />
+    </box>
+	<box id="bath_garage" size="0.05, 1.15, 0.2" movable="false">
+      <body position="1.43, 0.29, 0"  orientation="0,0,0" />
+    </box>
+	<box id="kitchen_garage" size="0.05, 0.25, 0.2" movable="false">
+      <body position="1.43, 1.35, 0"  orientation="0,0,0" />
+    </box>
+    <box id="guest_living_kitchen" size="1, 0.05, 0.2" movable="false">
+      <body position="-0.25,0.55,0" orientation="0,0,0" />
+    </box>
+    <box id="guest_living_balcony" size="0.8, 0.05, 0.2" movable="false">
+      <body position="-1.53,0.55,0" orientation="0,0,0" />
+    </box>
+    <box id="kitchen_bathroom_living" size="0.8, 0.05, 0.2" movable="false">
+      <body position="1.05,0.55,0" orientation="0,0,0" />
+    </box>
+	<box id="lower_balcony_living" size="0.05, 0.90, 0.2" movable="false">
+      <body position="-1.93,-1.05,0" orientation="0,0,0" />
     </box>
 
 
