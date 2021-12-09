@@ -24,7 +24,7 @@
       <sensors>
 		<differential_steering implementation="default" noise_level="0.0" />
       </sensors>
-      <params script="controller.lua" />
+      <params script="controller-empty.lua" />
     </lua_controller>
  
   </controllers>
@@ -33,7 +33,7 @@
   <!-- *********************** -->
   <!-- * Arena configuration * -->
   <!-- *********************** -->
-  <arena size="6, 3, 0" center="0,0,0" positional_grid_size="8,8,1">
+  <arena size="6, 3, 1" center="0,0,0.5">
   <floor id="f" source="image" path="floor.PNG" pixels_per_meter="100"/>
     
 	<!-- 4 walls to delimit arena -->
@@ -106,18 +106,18 @@
     </box>
 	
 	<distribute>
-		<position method="uniform" min="-3,-1.49,0" max="3,1.49,0" />
-		<orientation method="uniform" min="0,0,0" max="0,0,0" />
-		<entity quantity="1" max_trials="100">
+		<position method="uniform" min="-3,-1.49,0" max="1.98,1.49,0" />
+		<orientation method="constant" values="0,0,0" />
+		<entity quantity="10" max_trials="100">
 			<light id="light"
-				color="yellow"
+				color="red"
 			   intensity="1"
 			   medium="leds"/>
 		</entity>
     </distribute>
 	
 	<distribute>
-		<position method="uniform" min="-3,-1.49,0" max="3,1.49,0" />
+		<position method="uniform" min="-3,-1.49,0" max="1.98,1.49,0" />
 		<orientation method="uniform" min="0,0,0" max="360,0,0" />
 			<entity quantity="10" max_trials="100">
 				<box id="o" size="0.2, 0.2, 0.2" movable="false"/>
