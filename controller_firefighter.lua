@@ -49,14 +49,15 @@ local actions = {
 local nearest_robot_message = function()
 	local previous_message = { }
 	for i=1, #robot.range_and_bearing do
-		local message = robot.range_and_bearing[i] 
+		local message = robot.range_and_bearing[i]
+		
 		print("nearest_robot_message: ", robot.range_and_bearing[i].horizontal_bearing)
+		
 		if message.range < (previous_message.range or 0) then
 			previous_message = table.copy(message)
 		end
 	end
 	
-
 	return previous_message
 end
 
@@ -68,7 +69,6 @@ function signal_detection_15()
 	end
 
 	local transmiter_angle = message.horizontal_bearing
-	print("signal_detection_15: ", transmiter_angle)
 	return 0 <= transmiter_angle and transmiter_angle < 15
 end
 
@@ -176,7 +176,6 @@ local take = function(action_index)
 		return limit(left_v), limit(right_v)
 	end
   
-  print("in take: ", action_index, " - ", actions[action_index])
   local angle = actions[action_index]
   local wheels_distance = robot.wheels.axis_length
   local left_v = MAX_VELOCITY - (angle * wheels_distance / 2)
@@ -192,8 +191,6 @@ function init()
 	local weights = CSV.load(FILENAME)	
 	local state_action_space = { actions = actions, state_features = state_features }
 	local hyperparameters = { alpha = ALPHA, gamma = GAMMA, lambda = LAMBDA, epsilon = EPSILON, bias = BIAS }
-	
-	print("Actions in init: ", #state_action_space.actions)
 	
 	CSV.create_csv(ANALYSIS_FILENAME, { "step", "reward" })
 	

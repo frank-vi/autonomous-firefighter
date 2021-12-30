@@ -22,24 +22,16 @@ local random_weights = function()
 		random_w[i] = { }
 		for j=1, #state_features do
 			random_w[i][j] = robot.random.uniform()
-			print("random_weights: ", random_w[i][j])
 		end
 	end
 	return random_w
 end
 
 local config = function(state_action_space, weights_vector, q_hyperparameters)
-	weights = weights_vector
 	hyperparameters = q_hyperparameters
-	
---	print("Actions in config: ", #state_action_space.actions)
 	actions = state_action_space.actions
 	state_features = state_action_space.state_features
-	
-	if not next(weights) then
-		weights = random_weights()
---		print("in config: ", #weights, " - ", #weights[1])
-	end
+	weights = next(weights_vector) and weights_vector or random_weights()
 	
 	for i=1, #actions do
 		q[i] = 0
@@ -65,7 +57,6 @@ local active_features = function(action)
 end
 
 local null_eligibility_traces = function()
-	print("null_eligibility_traces: ", #weights)
 	for action_index=1, #weights do
 		eligibility_traces[action_index] = { }
 		for state_feature_index=1, #weights[action_index] do
