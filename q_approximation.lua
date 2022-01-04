@@ -22,6 +22,7 @@ local eligibility_traces = { }
 
 local active_state_features = { }
 
+local first_step = true
 
 ----------------------------------------------------------------------
 --	Determine state-action features from state-features for a state S
