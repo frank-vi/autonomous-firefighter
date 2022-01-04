@@ -32,7 +32,6 @@ local turn_a_lot_right = 90
 local turn_a_lot_left = -90
 local go_forward = 0 
 
--- 3 actions
 local actions = {
 	go_forward,
 	turn_left,
@@ -49,15 +48,12 @@ local actions = {
 local nearest_robot_message = function()
 	local previous_message = { }
 	for i=1, #robot.range_and_bearing do
-		local message = robot.range_and_bearing[i]
-		
+		local message = robot.range_and_bearing[i] 
 		print("nearest_robot_message: ", robot.range_and_bearing[i].horizontal_bearing)
-		
 		if message.range < (previous_message.range or 0) then
 			previous_message = table.copy(message)
 		end
 	end
-	
 	return previous_message
 end
 
@@ -69,6 +65,7 @@ function signal_detection_15()
 	end
 
 	local transmiter_angle = message.horizontal_bearing
+	print("signal_detection_15: ", transmiter_angle)
 	return 0 <= transmiter_angle and transmiter_angle < 15
 end
 
@@ -185,29 +182,27 @@ local take = function(action_index)
   robot.wheels.set_velocity(left_v,right_v)
 end
 
+
 function init()
-	action = 1
 	done_steps = 0
 	local weights = CSV.load(FILENAME)	
-	local state_action_space = { actions = actions, state_features = state_features }
-	local hyperparameters = { alpha = ALPHA, gamma = GAMMA, lambda = LAMBDA, epsilon = EPSILON, bias = BIAS }
+	local state_action_space = { actions = #actions, state_features = state_features }
+	local hyperparameters = { alpha = ALPHA, gamma = GAMMA, lambda = LAMBDA, epsilon = EPSILON }
 	
 	CSV.create_csv(ANALYSIS_FILENAME, { "step", "reward" })
 	
-	Q_learning.config(state_action_space, weights, hyperparameters)
-	Q_learning.start_episode(action)
+	Q_learning.config(state_action_space, weights, hyperparameters, 1)
+	Q_learning.start_episode()
 end
 
 function step()
+	local reward_from_environment = reward()
+	
 	if done_steps > 0 then
-		local reward_from_environment = reward()
 		CSV.append(ANALYSIS_FILENAME, { done_steps, reward_from_environment })
-		Q_learning.evaluation(reward_from_environment)
-		action = Q_learning.choose_action()
 	end
 	
-	-- the first action is chosen by the designer,
-	-- so we can immediatly execute it
+	local action = Q_learning.q_step_argos(reward_from_environment)
 	take(action)
 	done_steps = done_steps + 1
 end

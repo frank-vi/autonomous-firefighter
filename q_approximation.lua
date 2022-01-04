@@ -1,172 +1,181 @@
--- q-value estimate for all actions
-local q = { }
+local validator = require 'validator'
+local Algebra = require 'algebra'
+local Matrix = Algebra.Matrix
+local Vector = Algebra.Vector
 
--- A **vector** of connection weights.
--- each weight is associated to a feature (of (s, a) pair)
--- actions x (unbiased + biased) state features --> #state-action features
-local weights = { }
+------------------------------------------------------
+------------------------------------------------------
+--	Q(λ) with Linear Function Approximation Algorithm
+------------------------------------------------------
+------------------------------------------------------
 
--- A **column vector** of eligibility traces, one for each component of weights vector 
+local alpha = 0
+local gamma = 0
+local lambda = 0
+local epsilon = 0
+
+local theta = { }
+local actions = 0
+local choosed_action = 0
+local state_features = { }
 local eligibility_traces = { }
 
--- learning hyperparameters
-local hyperparameters = { }
+local active_state_features = { }
 
-local actions = { }
 
-local state_features = { }
-
-local random_weights = function()
-	local random_w = { }
-	for i=1, #actions do
-		random_w[i] = { }
-		for j=1, #state_features do
-			random_w[i][j] = robot.random.uniform()
-		end
-	end
-	return random_w
+----------------------------------------------------------------------
+--	Determine state-action features from state-features for a state S
+----------------------------------------------------------------------
+local observe_active_state_features = function()
+	local fn = function(state_feature) return state_feature() end
+	return Vector.map(state_features, fn)
 end
 
-local config = function(state_action_space, weights_vector, q_hyperparameters)
-	hyperparameters = q_hyperparameters
-	actions = state_action_space.actions
-	state_features = state_action_space.state_features
-	weights = next(weights_vector) and weights_vector or random_weights()
-	
-	for i=1, #actions do
-		q[i] = 0
+local print_vector = function(vector)
+	local stringify = "[ "
+	for i=1, #vector do
+		stringify = stringify .. i .. "=" .. vector[i] .. ", "
+	end
+	print(stringify .. " ]")
+end
+
+local print_matrix = function(matrix)
+	for r=1, #matrix do
+		print_vector(matrix[r])
 	end
 end
 
--- associated to 
-local active_features = function(action)
-	local active_features = { }
-	
-	if action ~= choosed_action then
-		return active_features
-	end
-	
-	for i=1, #state_features do
-		local value = state_features[i]()
-		if value > 0 then
-			active_features[i] = value
-		end
-	end
-	
-	return active_features
-end
-
+---------------------------------------
+--	Update rules of eligibility traces
+---------------------------------------
 local null_eligibility_traces = function()
-	for action_index=1, #weights do
-		eligibility_traces[action_index] = { }
-		for state_feature_index=1, #weights[action_index] do
-			eligibility_traces[action_index][state_feature_index] = 0
-		end
-	end
+	eligibility_traces = Matrix.create(actions, #state_features)
 end
 
-local eligibility_traces_update = function(action_active_features)
-	for state_feature_index, state_feature_value in pairs(action_active_features) do
-		local previous_value = eligibility_traces[choosed_action][state_feature_index]
-		eligibility_traces[choosed_action][state_feature_index] = previous_value + state_feature_value -- e_i = e_i + 1
-	end
+local accumulating_eligibility_traces = function(action, active_state_features)
+	local sum_fn = function(eligibility_value) return eligibility_value + 1 end
+	local updated_eligibility_trace = Vector.map(eligibility_traces[action], sum_fn)
+	eligibility_traces[action] = Vector.hadamart_product(active_state_features, updated_eligibility_trace)
 end
 
 local exploitation_eligibility_traces = function()
-	local learning_parameter = hyperparameters.gamma*hyperparameters.lambda
-	for action_index=1, #eligibility_traces do
-		for state_feature_index=1, #eligibility_traces[action_index] do
-			local value = eligibility_traces[action_index][state_feature_index]
-			eligibility_traces[action_index][state_feature_index] = learning_parameter*value
-		end
+	local exploitation_fn = function(eligibility_value)
+		return gamma*lambda*eligibility_value
 	end
-end
-
-local start_episode = function(initial_action)
-	null_eligibility_traces()
-	choosed_action = initial_action
-	action_active_features = active_features(choosed_action)
-	-- for first step where action is given by designer
-	eligibility_traces_update(action_active_features)
+	eligibility_traces = Matrix.map(eligibility_traces, exploitation_fn)
 end
 
 
-local combination = function(action_active_features, action)
-	local sum = 0
-	local action_weights = weights[action]
+------------------------------
+--	All operations on actions
+------------------------------
+--	Single action with max Q-value
+local max_action_and_q = function(theta, active_state_features)
+	local q_values = Matrix.vector_product(theta, active_state_features)
+	local max_qs = Vector.max(q_values)
+	local sample = robot.random.uniform(1, #max_qs)
+	local action = max_qs[sample]
+	return action, q_values[action]
+end
+
+
+-------------------------------
+--	All operations on Q-values
+-------------------------------
+--	Q-value for a given action: based only on state-feature present in s,a
+local q_value = function(action, active_state_features)
+	return Vector.scalar_product(active_state_features, theta[action])
+end
+
+
+-------------------------------------
+-- All operations on weights - theta
+-------------------------------------
+local theta_update = function(delta)
+	local e_fn = function(eligibility_value)
+		return alpha*delta*eligibility_value
+	end
+	--print_matrix(eligibility_traces)
+	theta = Matrix.map_addition(eligibility_traces, e_fn, theta)
+end
+
+local random_weights = function()
+	function random_generator(r, c)
+		return robot.random.uniform()
+	end
+	return Matrix.create(actions, #state_features, random_generator)
+end
+
+
+-----------------------------
+-- The kernel of the LFA-Q(λ)
+-----------------------------
+local config = function(state_action_space, weights, hyperparameters, initial_action)
+	validator.check_state_action_space(state_action_space)
+	validator.check_weights(weights, state_action_space)
+	validator.check_hyperparameters(hyperparameters)
+	validator.check_initial_action(initial_action, state_action_space)
 	
-	for state_feature_index, state_feature_value in pairs(action_active_features) do
-		sum = sum + state_feature_value*action_weights[state_feature_index]
-	end
-	return sum
+	alpha = hyperparameters.alpha
+	gamma = hyperparameters.gamma
+	lambda = hyperparameters.lambda
+	epsilon = hyperparameters.epsilon
+	actions = state_action_space.actions
+	state_features = state_action_space.state_features
+	theta = next(weights) and weights or random_weights()
+	choosed_action = initial_action or robot.random.uniform(1, actions)
 end
 
-local action_with_q_max = function()
-	local action = 1
-	local current_q = -math.huge
-	for i=1, #q do
-		if q[i] > current_q then
-			current_q = q[i]
-			action = i
-		end
+local start_episode = function()
+	null_eligibility_traces()
+	active_state_features = observe_active_state_features()
+end
+
+local learn = function(reward)
+	local q_a = q_value(choosed_action, active_state_features)
+	local learning_error = reward - q_a
+	active_state_features = observe_active_state_features()
+	local _, max_q = max_action_and_q(theta, active_state_features)
+	learning_error = learning_error + gamma * max_q
+	theta_update(learning_error)
+end
+
+local epsilon_greedy_strategy = function()
+	local action = robot.random.uniform_int(1, actions)
+	local sample = robot.random.uniform()
+	if sample < 1 - epsilon then
+		action, _ = max_action_and_q(theta, active_state_features)
+		exploitation_eligibility_traces()
+	else
+		null_eligibility_traces()
 	end
 	return action
 end
 
-local epsilon_greedy_strategy = function()
-	local sample = robot.random.uniform()
-	if sample < 1 - hyperparameters.epsilon then
-		for i=1, #actions do
-			q[i] = combination(action_active_features, i)
-		end
-		choosed_action = action_with_q_max()
-		exploitation_eligibility_traces()
-	else
-		choosed_action = robot.random.uniform_int(1, #actions)
-		null_eligibility_traces()
-	end
+local stop_episode = function()
+	return theta
+end
+
+
+-----------------------------------
+-- Adapter for ARGoS3 control loop
+-----------------------------------
+local q_step_argos = function(reward)
+	accumulating_eligibility_traces(choosed_action, active_state_features)
+	
+	if first_step then
+		first_step = false
+		return choosed_action
+	end	
+	
+	learn(reward)
+	choosed_action = epsilon_greedy_strategy()
 	return choosed_action
 end
 
-
-local approximation = function(action)
-	local action_active_features = active_features(action)
-	local action_q_value = combination(action_active_features, action)
-	return action_q_value
-end
-
-local weights_update = function(delta)
-	local learned_delta = hyperparameters.alpha*delta
-	for action_index=1, #weights do
-		for state_feature_index=1, #weights[action_index] do
-			local value = weights[action_index][state_feature_index]
-			local eligibility_trace = eligibility_traces[action_index][state_feature_index]
-			weights[action_index][state_feature_index] = value + learned_delta*eligibility_trace
-		end
-	end
-end
-
-local evaluation = function(reward)
-	eligibility_traces_update(action_active_features)
-	for i=1, #actions do
-		q[i] = (i == choosed_action) and
-					combination(action_active_features, i) or 
-					approximation(i)
-	end
-	local q_max = math.max(table.unpack(q))
-	local delta = reward + hyperparameters.gamma*q_max - q[choosed_action]
-	weights_update(delta)
-end
-
-function stop_episode()
-	return weights
-end
-
-return {
+return { 
 	config = config,
-	random_weights = random_weights,
 	start_episode = start_episode,
-	choose_action = epsilon_greedy_strategy,
-	evaluation = evaluation,
+	q_step_argos = q_step_argos,
 	stop_episode = stop_episode
 }
