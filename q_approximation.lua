@@ -74,7 +74,7 @@ end
 local max_action_and_q = function(theta, active_state_features)
 	local q_values = Matrix.vector_product(theta, active_state_features)
 	local max_qs = Vector.max(q_values)
-	local sample = robot.random.uniform(1, #max_qs)
+	local sample = robot.random.uniform_int(1, #max_qs)
 	local action = max_qs[sample]
 	return action, q_values[action]
 end
