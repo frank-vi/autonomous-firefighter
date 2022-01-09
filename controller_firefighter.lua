@@ -3,13 +3,13 @@ local Q_learning = require 'q_approximation'
 
 local BIAS = 1.0
 -- learning rate
-local ALPHA = 0.1
+local ALPHA = 0.5
 -- discount factor
 local GAMMA = 0.9
 -- bootstrapping factor
 local LAMBDA = 0.8
 -- epsilon value for greedy action selection
-local EPSILON = 0.9
+local EPSILON = 0.8
 
 local REWARD = 2
 local PENALTY = 3
@@ -19,8 +19,10 @@ local MAX_VELOCITY = 10
 local FILENAME = 'weights.csv'
 local ANALYSIS_FILENAME = "analysis.csv"
 
-local distance = 0
 
+local starting_position=robot.positioning.position
+local survivor_position = { x = -1.8, y = 0.4 }
+local initial_distance=0
 -----------------
 --	ACTION SPACE
 -----------------
@@ -144,16 +146,14 @@ end
 
 local reward = function()
 	local robot_position = robot.positioning.position
-	local survivor_position = { x = -1.8, y = 0.4 } 
+	
 	
 	local current_distance = euclidean_distance(robot_position, survivor_position)
-	
-	if current_distance < distance then
-		return REWARD * (distance - current_distance)
-	elseif current_distance > distance then
-		return PENALTY * (distance - current_distance)
+	--print("Current distance",current_distance)
+	if current_distance < initial_distance then
+ 		return REWARD * (initial_distance-current_distance)
 	else
-		return 0
+ 		return PENALTY * (current_distance-initial_distance)
 	end
 end
 
@@ -185,6 +185,8 @@ end
 
 function init()
 	done_steps = 0
+	initial_distance=euclidean_distance(starting_position, survivor_position)
+	print("initial distance is",initial_distance)
 	local weights = CSV.load(FILENAME)	
 	local state_action_space = { actions = #actions, state_features = state_features }
 	local hyperparameters = { alpha = ALPHA, gamma = GAMMA, lambda = LAMBDA, epsilon = EPSILON }
