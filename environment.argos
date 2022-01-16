@@ -36,6 +36,7 @@
       </actuators>
       <sensors>
 		<differential_steering implementation="default" noise_level="0.0" />
+		<range_and_bearing implementation="medium" medium="rab" />
       </sensors>
       <params script="controller_surviror.lua" />
     </lua_controller>
