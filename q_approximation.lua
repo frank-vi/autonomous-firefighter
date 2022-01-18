@@ -162,13 +162,12 @@ end
 -- Adapter for ARGoS3 control loop
 -----------------------------------
 local q_step_argos = function(reward)
-	accumulating_eligibility_traces(choosed_action, active_state_features)
-	
 	if first_step then
 		first_step = false
 		return choosed_action
 	end	
 	
+	accumulating_eligibility_traces(choosed_action, active_state_features)
 	learn(reward)
 	choosed_action = epsilon_greedy_strategy()
 	return choosed_action
