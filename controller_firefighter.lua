@@ -3,16 +3,16 @@ local Q_learning = require 'q_approximation'
 
 local BIAS = 1.0
 -- learning rate
-local ALPHA = 0.5
+local ALPHA = 0.4
 -- discount factor
 local GAMMA = 0.9
 -- bootstrapping factor
 local LAMBDA = 0.8
 -- epsilon value for greedy action selection
-local EPSILON = 0.8
+local EPSILON = 0.5
 
-local REWARD = 2
-local PENALTY = 3
+local REWARD = 3
+local PENALTY = 2
 
 local MAX_VELOCITY = 10
 
@@ -23,6 +23,9 @@ local ANALYSIS_FILENAME = "analysis.csv"
 local starting_position=robot.positioning.position
 local survivor_position = { x = -1.8, y = 0.4 }
 local initial_distance=0
+
+local feature_activations = { 0, 0, 0, 0, 0, 0 }
+
 -----------------
 --	ACTION SPACE
 -----------------
@@ -51,9 +54,10 @@ local nearest_robot_message = function()
 	local previous_message = { }
 	for i=1, #robot.range_and_bearing do
 		local message = robot.range_and_bearing[i] 
-		print("nearest_robot_message: ", robot.range_and_bearing[i].horizontal_bearing)
-		if message.range < (previous_message.range or 0) then
-			previous_message = table.copy(message)
+		--print("nearest_robot_message: ", robot.range_and_bearing[i].horizontal_bearing)
+		--print("nearest_robot_message: ", robot.range_and_bearing[i].range)
+		if message.range < (previous_message.range or math.huge) then
+			previous_message = message
 		end
 	end
 	return previous_message
@@ -67,8 +71,14 @@ function signal_detection_15()
 	end
 
 	local transmiter_angle = message.horizontal_bearing
-	print("signal_detection_15: ", transmiter_angle)
-	return 0 <= transmiter_angle and transmiter_angle < 15
+	--print("signal_detection_15: ", transmiter_angle)
+	local result = 0 <= transmiter_angle and transmiter_angle < math.pi/12
+	
+	if result then
+		feature_activations[1] = feature_activations[1] + 1
+	end
+	
+	return result and 1 or 0
 end
 
 function signal_detection_30()
@@ -79,7 +89,13 @@ function signal_detection_30()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	return 15 < transmiter_angle and transmiter_angle < 30
+	local result = math.pi/12 < transmiter_angle and transmiter_angle < math.pi/6
+	
+	if result then
+		feature_activations[2] = feature_activations[2] + 1
+	end
+	
+	return result and 1 or 0
 end
 
 function signal_detection_45()
@@ -90,7 +106,13 @@ function signal_detection_45()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	return 30 < transmiter_angle and transmiter_angle < 45
+	local result = math.pi/6 < transmiter_angle and transmiter_angle < math.pi/4
+	
+	if result then
+		feature_activations[3] = feature_activations[3] + 1
+	end
+	
+	return result and 1 or 0
 end
 
 function signal_detection_60()
@@ -101,7 +123,13 @@ function signal_detection_60()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	return 45 < transmiter_angle and transmiter_angle < 60
+	local result = math.pi/4 < transmiter_angle and transmiter_angle < math.pi/3
+	
+	if result then
+		feature_activations[4] = feature_activations[4] + 1
+	end
+	
+	return result and 1 or 0
 end
 
 function signal_detection_75()
@@ -112,7 +140,13 @@ function signal_detection_75()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	return 60 < transmiter_angle and transmiter_angle < 75
+	local result = math.pi/3 < transmiter_angle and transmiter_angle < 5/12*math.pi
+	
+	if result then
+		feature_activations[5] = feature_activations[5] + 1
+	end
+	
+	return result and 1 or 0
 end
 
 function signal_detection_90()
@@ -123,7 +157,13 @@ function signal_detection_90()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	return 75 < transmiter_angle < 90
+	local result = 5/12*math.pi < transmiter_angle and transmiter_angle < math.pi/2
+	
+	if result then
+		feature_activations[6] = feature_activations[6] + 1
+	end
+	
+	return result and 1 or 0
 end
 
 local state_features = {
@@ -146,15 +186,13 @@ end
 
 local reward = function()
 	local robot_position = robot.positioning.position
-	
-	
 	local current_distance = euclidean_distance(robot_position, survivor_position)
-	--print("Current distance",current_distance)
+	
 	if current_distance < initial_distance then
  		return REWARD * (initial_distance-current_distance)
-	else
- 		return PENALTY * (current_distance-initial_distance)
 	end
+	
+	return PENALTY * (current_distance-initial_distance)
 end
 
 
@@ -186,7 +224,7 @@ end
 function init()
 	done_steps = 0
 	initial_distance=euclidean_distance(starting_position, survivor_position)
-	print("initial distance is",initial_distance)
+	
 	local weights = CSV.load(FILENAME)	
 	local state_action_space = { actions = #actions, state_features = state_features }
 	local hyperparameters = { alpha = ALPHA, gamma = GAMMA, lambda = LAMBDA, epsilon = EPSILON }
@@ -213,6 +251,9 @@ function reset()
 end
 
 function destroy()
+	for i=1, #feature_activations do
+		print("Feature: " .. i .. ", activations: ", feature_activations[i])
+	end
 	local learned_weights = Q_learning.stop_episode()
 	CSV.save(FILENAME, learned_weights)
 end
