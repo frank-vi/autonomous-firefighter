@@ -54,9 +54,12 @@ local null_eligibility_traces = function()
 end
 
 local accumulating_eligibility_traces = function(action, active_state_features)
-	local sum_fn = function(eligibility_value) return eligibility_value + 1 end
-	local updated_eligibility_trace = Vector.map(eligibility_traces[action], sum_fn)
-	eligibility_traces[action] = Vector.hadamart_product(active_state_features, updated_eligibility_trace)
+	for feature_index=1, #eligibility_traces[action] do
+		if active_state_features[feature_index] > 0 then
+			local previous_eligibility_value = eligibility_traces[action][feature_index]
+			eligibility_traces[action][feature_index] = previous_eligibility_value + 1
+		end
+	end
 end
 
 local exploitation_eligibility_traces = function()
