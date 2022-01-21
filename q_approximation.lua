@@ -100,7 +100,8 @@ local theta_update = function(delta)
 		return alpha*delta*eligibility_value
 	end
 	--print_matrix(eligibility_traces)
-	theta = Matrix.map_addition(eligibility_traces, e_fn, theta)
+	local eligibility_contribution = Matrix.map(eligibility_traces, e_fn)
+	theta = Matrix.addition(eligibility_contribution, theta)
 end
 
 local random_weights = function()
