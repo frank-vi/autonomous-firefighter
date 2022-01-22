@@ -3,7 +3,7 @@ local Q_learning = require 'q_approximation'
 
 local BIAS = 1.0
 -- learning rate
-local ALPHA = 0.4
+local ALPHA = 0.3
 -- discount factor
 local GAMMA = 0.9
 -- bootstrapping factor
@@ -11,8 +11,8 @@ local LAMBDA = 0.8
 -- epsilon value for greedy action selection
 local EPSILON = 0.5
 
-local REWARD = 3
-local PENALTY = 2
+local REWARD = 2
+local PENALTY = 3
 
 local MAX_VELOCITY = 10
 
@@ -238,11 +238,12 @@ end
 function step()
 	local reward_from_environment = reward()
 	
+	local reward_from_environment_normalized= (reward_from_environment-math.min(reward_from_environment))/(math.max(reward_from_environment)-math.min(reward_from_environment))
 	if done_steps > 0 then
-		CSV.append(ANALYSIS_FILENAME, { done_steps, reward_from_environment })
+		CSV.append(ANALYSIS_FILENAME, { done_steps, reward_from_environment_normalized })
 	end
 	
-	local action = Q_learning.q_step_argos(reward_from_environment)
+	local action = Q_learning.q_step_argos(reward_from_environment_normalized)
 	take(action)
 	done_steps = done_steps + 1
 end
