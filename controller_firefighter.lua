@@ -3,16 +3,16 @@ local Q_learning = require 'q_approximation'
 
 local BIAS = 1.0
 -- learning rate
-local ALPHA = 0.3
+local ALPHA = 0.2
 -- discount factor
 local GAMMA = 0.9
 -- bootstrapping factor
 local LAMBDA = 0.8
 -- epsilon value for greedy action selection
-local EPSILON = 0.5
+local EPSILON = 0.3
 
 local REWARD = 2
-local PENALTY = 3
+local PENALTY = -3
 
 local MAX_VELOCITY = 10
 
@@ -22,9 +22,10 @@ local ANALYSIS_FILENAME = "analysis.csv"
 
 local starting_position=robot.positioning.position
 local survivor_position = { x = -1.8, y = 0.4 }
-local initial_distance=0
+local previous_distance=0
 
-local feature_activations = { 0, 0, 0, 0, 0, 0 }
+local feature_activations = { 0, 0, 0, 0, 0, 0, 0}
+local feature_activation_step = { 0, 0, 0, 0, 0, 0, 0}
 
 -----------------
 --	ACTION SPACE
@@ -75,6 +76,7 @@ function signal_detection_15()
 	local result = 0 <= transmiter_angle and transmiter_angle < math.pi/12
 	
 	if result then
+		feature_activation_step[1] = 1
 		feature_activations[1] = feature_activations[1] + 1
 	end
 	
@@ -92,6 +94,7 @@ function signal_detection_30()
 	local result = math.pi/12 < transmiter_angle and transmiter_angle < math.pi/6
 	
 	if result then
+		feature_activation_step[2] = 1
 		feature_activations[2] = feature_activations[2] + 1
 	end
 	
@@ -109,6 +112,7 @@ function signal_detection_45()
 	local result = math.pi/6 < transmiter_angle and transmiter_angle < math.pi/4
 	
 	if result then
+		feature_activation_step[3] = 1
 		feature_activations[3] = feature_activations[3] + 1
 	end
 	
@@ -126,6 +130,7 @@ function signal_detection_60()
 	local result = math.pi/4 < transmiter_angle and transmiter_angle < math.pi/3
 	
 	if result then
+		feature_activation_step[4] = 1
 		feature_activations[4] = feature_activations[4] + 1
 	end
 	
@@ -143,6 +148,7 @@ function signal_detection_75()
 	local result = math.pi/3 < transmiter_angle and transmiter_angle < 5/12*math.pi
 	
 	if result then
+		feature_activation_step[5] = 1
 		feature_activations[5] = feature_activations[5] + 1
 	end
 	
@@ -160,6 +166,7 @@ function signal_detection_90()
 	local result = 5/12*math.pi < transmiter_angle and transmiter_angle < math.pi/2
 	
 	if result then
+		feature_activation_step[6] = 1
 		feature_activations[6] = feature_activations[6] + 1
 	end
 	
@@ -173,7 +180,11 @@ local state_features = {
 	signal_detection_60,
 	signal_detection_75,
 	signal_detection_90,
-	function() return BIAS end
+	function()
+		feature_activation_step[7] = 1
+		feature_activations[7] = feature_activations[7] + 1
+		return BIAS
+	end
 }
 
 
@@ -187,12 +198,16 @@ end
 local reward = function()
 	local robot_position = robot.positioning.position
 	local current_distance = euclidean_distance(robot_position, survivor_position)
+	local reward_res = 0
 	
-	if current_distance < initial_distance then
- 		return REWARD * (initial_distance-current_distance)
+	if current_distance < previous_distance then
+ 		reward_res = REWARD * (previous_distance - current_distance)
+	else
+		reward_res = PENALTY * (current_distance-previous_distance)
 	end
 	
-	return PENALTY * (current_distance-initial_distance)
+	previous_distance = current_distance
+	return reward_res
 end
 
 
@@ -220,16 +235,24 @@ local take = function(action_index)
   robot.wheels.set_velocity(left_v,right_v)
 end
 
+function printable_vector(vector)
+	local stringify = "[ "
+	for i=1, #vector do
+		stringify = stringify .. vector[i] .. " "
+	end
+	return stringify .. "]"
+end
 
 function init()
 	done_steps = 0
-	initial_distance=euclidean_distance(starting_position, survivor_position)
+	previous_distance=euclidean_distance(starting_position, survivor_position)
 	
-	local weights = CSV.load(FILENAME)	
+	local weights = CSV.load(FILENAME)
 	local state_action_space = { actions = #actions, state_features = state_features }
 	local hyperparameters = { alpha = ALPHA, gamma = GAMMA, lambda = LAMBDA, epsilon = EPSILON }
 	
 	CSV.create_csv(ANALYSIS_FILENAME, { "step", "reward" })
+	CSV.create_csv("features_activation.csv", { "step", "features" })
 	
 	Q_learning.config(state_action_space, weights, hyperparameters, 1)
 	Q_learning.start_episode()
@@ -238,12 +261,13 @@ end
 function step()
 	local reward_from_environment = reward()
 	
-	local reward_from_environment_normalized= (reward_from_environment-math.min(reward_from_environment))/(math.max(reward_from_environment)-math.min(reward_from_environment))
 	if done_steps > 0 then
-		CSV.append(ANALYSIS_FILENAME, { done_steps, reward_from_environment_normalized })
+		CSV.append(ANALYSIS_FILENAME, { done_steps, reward_from_environment })
+		CSV.append("features_activation.csv", { done_steps, printable_vector(feature_activation_step) })
+		feature_activation_step = { 0, 0, 0, 0, 0, 0, 0 }
 	end
 	
-	local action = Q_learning.q_step_argos(reward_from_environment_normalized)
+	local action = Q_learning.q_step_argos(reward_from_environment)
 	take(action)
 	done_steps = done_steps + 1
 end
