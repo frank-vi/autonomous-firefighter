@@ -9,7 +9,7 @@ local GAMMA = 0.9
 -- bootstrapping factor
 local LAMBDA = 0.8
 -- epsilon value for greedy action selection
-local EPSILON = 0.3
+local EPSILON = 0.1
 
 local REWARD = 2
 local PENALTY = -3
@@ -20,12 +20,19 @@ local FILENAME = 'weights.csv'
 local ANALYSIS_FILENAME = "analysis.csv"
 
 
+local action = 1
+local goal = false
+
 local starting_position=robot.positioning.position
 local survivor_position = { x = -1.8, y = 0.4 }
 local previous_distance=0
 
 local feature_activations = { 0, 0, 0, 0, 0, 0, 0}
 local feature_activation_step = { 0, 0, 0, 0, 0, 0, 0}
+
+local consecutive_steps = 1
+local consecutive_reward_steps = 0
+local consecutive_penalty_steps = 0
 
 -----------------
 --	ACTION SPACE
@@ -54,9 +61,7 @@ local actions = {
 local nearest_robot_message = function()
 	local previous_message = { }
 	for i=1, #robot.range_and_bearing do
-		local message = robot.range_and_bearing[i] 
-		--print("nearest_robot_message: ", robot.range_and_bearing[i].horizontal_bearing)
-		--print("nearest_robot_message: ", robot.range_and_bearing[i].range)
+		local message = robot.range_and_bearing[i]
 		if message.range < (previous_message.range or math.huge) then
 			previous_message = message
 		end
@@ -72,8 +77,7 @@ function signal_detection_15()
 	end
 
 	local transmiter_angle = message.horizontal_bearing
-	--print("signal_detection_15: ", transmiter_angle)
-	local result = 0 <= transmiter_angle and transmiter_angle < math.pi/12
+	local result = 0 <= transmiter_angle and transmiter_angle <= math.pi/12
 	
 	if result then
 		feature_activation_step[1] = 1
@@ -91,7 +95,7 @@ function signal_detection_30()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = math.pi/12 < transmiter_angle and transmiter_angle < math.pi/6
+	local result = math.pi/12 <= transmiter_angle and transmiter_angle <= math.pi/6
 	
 	if result then
 		feature_activation_step[2] = 1
@@ -109,7 +113,7 @@ function signal_detection_45()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = math.pi/6 < transmiter_angle and transmiter_angle < math.pi/4
+	local result = math.pi/6 <= transmiter_angle and transmiter_angle <= math.pi/4
 	
 	if result then
 		feature_activation_step[3] = 1
@@ -127,7 +131,7 @@ function signal_detection_60()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = math.pi/4 < transmiter_angle and transmiter_angle < math.pi/3
+	local result = -math.pi/12 < transmiter_angle and transmiter_angle <= 0
 	
 	if result then
 		feature_activation_step[4] = 1
@@ -145,7 +149,7 @@ function signal_detection_75()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = math.pi/3 < transmiter_angle and transmiter_angle < 5/12*math.pi
+	local result = -math.pi/6 <= transmiter_angle and transmiter_angle <= -math.pi/12
 	
 	if result then
 		feature_activation_step[5] = 1
@@ -156,14 +160,14 @@ function signal_detection_75()
 end
 
 function signal_detection_90()
-	local message = nearest_robot_message()	
+	local message = nearest_robot_message()
 	
 	if not next(message) then
 		return 0
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = 5/12*math.pi < transmiter_angle and transmiter_angle < math.pi/2
+	local result = -math.pi/4 <= transmiter_angle and transmiter_angle <= -math.pi/6
 	
 	if result then
 		feature_activation_step[6] = 1
@@ -181,7 +185,7 @@ local state_features = {
 	signal_detection_75,
 	signal_detection_90,
 	function()
-		feature_activation_step[7] = 1
+		feature_activation_step[7] = BIAS
 		feature_activations[7] = feature_activations[7] + 1
 		return BIAS
 	end
@@ -196,18 +200,31 @@ local euclidean_distance = function(position1, position2)
 end
 
 local reward = function()
-	local robot_position = robot.positioning.position
-	local current_distance = euclidean_distance(robot_position, survivor_position)
-	local reward_res = 0
+	local robot_position = nearest_robot_message()
+	local current_distance = robot_position.range
+	local rew = 0
 	
-	if current_distance < previous_distance then
- 		reward_res = REWARD * (previous_distance - current_distance)
-	else
-		reward_res = PENALTY * (current_distance-previous_distance)
+	if next(robot_position) and previous_distance ~= nil then
+		local is_closer = current_distance < previous_distance
+		local in_survivor_direction = -math.pi/18 <= robot_position.horizontal_bearing and robot_position.horizontal_bearing <= math.pi/18
+		
+		if in_survivor_direction and is_closer then
+			consecutive_steps = consecutive_steps + 1
+			survivor_direction = 100
+			pos = 100
+		else
+			consecutive_steps = 1
+			survivor_direction = -100
+			pos = (current_distance > previous_distance) and -100 or 0
+		end
+		
+		survivor_direction = survivor_direction * consecutive_steps
+		pos = pos * consecutive_steps
+		rew = pos+survivor_direction
 	end
-	
 	previous_distance = current_distance
-	return reward_res
+	
+	return rew
 end
 
 
@@ -243,33 +260,45 @@ function printable_vector(vector)
 	return stringify .. "]"
 end
 
+
 function init()
 	done_steps = 0
-	previous_distance=euclidean_distance(starting_position, survivor_position)
+	previous_distance=nearest_robot_message().range
 	
 	local weights = CSV.load(FILENAME)
 	local state_action_space = { actions = #actions, state_features = state_features }
 	local hyperparameters = { alpha = ALPHA, gamma = GAMMA, lambda = LAMBDA, epsilon = EPSILON }
 	
 	CSV.create_csv(ANALYSIS_FILENAME, { "step", "reward" })
-	CSV.create_csv("features_activation.csv", { "step", "features" })
+	CSV.create_csv("features_activation.csv", { "step", "features", "action" })
 	
 	Q_learning.config(state_action_space, weights, hyperparameters, 1)
 	Q_learning.start_episode()
 end
 
+function goal_state()
+	local m = nearest_robot_message().range
+	return (m or 20) < 20
+end
+
 function step()
 	local reward_from_environment = reward()
-	
+
 	if done_steps > 0 then
 		CSV.append(ANALYSIS_FILENAME, { done_steps, reward_from_environment })
-		CSV.append("features_activation.csv", { done_steps, printable_vector(feature_activation_step) })
+		CSV.append("features_activation.csv", { done_steps, printable_vector(feature_activation_step), action })
 		feature_activation_step = { 0, 0, 0, 0, 0, 0, 0 }
 	end
-	
-	local action = Q_learning.q_step_argos(reward_from_environment)
-	take(action)
-	done_steps = done_steps + 1
+
+	goal, action = Q_learning.q_step_argos(reward_from_environment, goal_state)
+
+	if not goal then
+		take(action)
+		done_steps = done_steps + 1
+	else
+		destroy()
+		os.exit()
+	end
 end
 
 function reset()

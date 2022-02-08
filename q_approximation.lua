@@ -2,6 +2,7 @@ local validator = require 'validator'
 local Algebra = require 'algebra'
 local Matrix = Algebra.Matrix
 local Vector = Algebra.Vector
+local CSV = require 'csv_helper'
 
 ------------------------------------------------------
 ------------------------------------------------------
@@ -129,6 +130,10 @@ local config = function(state_action_space, weights, hyperparameters, initial_ac
 	state_features = state_action_space.state_features
 	theta = next(weights) and weights or random_weights()
 	choosed_action = initial_action or robot.random.uniform(1, actions)
+	CSV.create_csv("action_choosed.csv", { "phase", "action" })
+	CSV.append("action_choosed.csv", { "designer", initial_action })
+	
+	CSV.create_csv("cumulative_return.csv", { "cumulative return", "max Q", "max action", "action performed" })
 end
 
 local start_episode = function()
@@ -138,10 +143,11 @@ end
 
 local learn = function(reward)
 	local q_a = q_value(choosed_action, active_state_features)
-	local learning_error = reward - q_a
 	active_state_features = observe_active_state_features()
-	local _, max_q = max_action_and_q(theta, active_state_features)
-	learning_error = learning_error + gamma * max_q
+	local max_action, max_q = max_action_and_q(theta, active_state_features)
+	local cumulative_return = reward + gamma * max_q
+	CSV.append("cumulative_return.csv", { cumulative_return, max_q, max_action, choosed_action })
+	local learning_error = cumulative_return - q_a
 	theta_update(learning_error)
 end
 
@@ -151,8 +157,10 @@ local epsilon_greedy_strategy = function()
 	if sample < 1 - epsilon then
 		action, _ = max_action_and_q(theta, active_state_features)
 		exploitation_eligibility_traces()
+		CSV.append("action_choosed.csv", { "exploitation", action })
 	else
 		null_eligibility_traces()
+		CSV.append("action_choosed.csv", { "exploration", action })
 	end
 	return action
 end
@@ -165,16 +173,21 @@ end
 -----------------------------------
 -- Adapter for ARGoS3 control loop
 -----------------------------------
-local q_step_argos = function(reward)
+local q_step_argos = function(reward, goal_state)
 	if first_step then
 		first_step = false
-		return choosed_action
+		return false, choosed_action
 	end	
 	
 	accumulating_eligibility_traces(choosed_action, active_state_features)
 	learn(reward)
+	
+	if goal_state() then
+		return true, 0
+	end
+	
 	choosed_action = epsilon_greedy_strategy()
-	return choosed_action
+	return false, choosed_action
 end
 
 return { 
