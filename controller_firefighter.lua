@@ -222,7 +222,7 @@ local reward = function()
 	end
 	previous_distance = current_distance
 	
-	return rew * consecutive_steps
+	return rew
 end
 
 
