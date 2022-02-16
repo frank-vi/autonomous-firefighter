@@ -3,7 +3,7 @@ local Q_learning = require 'q_approximation'
 
 local BIAS = 1.0
 -- learning rate
-local ALPHA = 0.2
+local ALPHA = 0.3 -- next 0.6
 -- discount factor
 local GAMMA = 0.9
 -- bootstrapping factor
@@ -131,13 +131,13 @@ function signal_detection_60()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = -math.pi/12 < transmiter_angle and transmiter_angle <= 0
-	
+	local result = math.pi/4 < transmiter_angle and transmiter_angle < math.pi/3
+
 	if result then
 		feature_activation_step[4] = 1
 		feature_activations[4] = feature_activations[4] + 1
 	end
-	
+
 	return result and 1 or 0
 end
 
@@ -149,31 +149,31 @@ function signal_detection_75()
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = -math.pi/6 <= transmiter_angle and transmiter_angle <= -math.pi/12
-	
+	local result = math.pi/3 < transmiter_angle and transmiter_angle < 5/12*math.pi
+
 	if result then
 		feature_activation_step[5] = 1
 		feature_activations[5] = feature_activations[5] + 1
 	end
-	
+
 	return result and 1 or 0
 end
 
 function signal_detection_90()
-	local message = nearest_robot_message()
+	local message = nearest_robot_message()	
 	
 	if not next(message) then
 		return 0
 	end
 	
 	local transmiter_angle = message.horizontal_bearing
-	local result = -math.pi/4 <= transmiter_angle and transmiter_angle <= -math.pi/6
-	
+	local result = 5/12*math.pi < transmiter_angle and transmiter_angle < math.pi/2
+
 	if result then
 		feature_activation_step[6] = 1
 		feature_activations[6] = feature_activations[6] + 1
 	end
-	
+
 	return result and 1 or 0
 end
 
@@ -218,13 +218,11 @@ local reward = function()
 			pos = (current_distance > previous_distance) and -100 or 0
 		end
 		
-		survivor_direction = survivor_direction * consecutive_steps
-		pos = pos * consecutive_steps
 		rew = pos+survivor_direction
 	end
 	previous_distance = current_distance
 	
-	return rew
+	return rew * consecutive_steps
 end
 
 
@@ -290,7 +288,7 @@ function step()
 		feature_activation_step = { 0, 0, 0, 0, 0, 0, 0 }
 	end
 
-	goal, action = Q_learning.q_step_argos(reward_from_environment, goal_state)
+	goal, action = Q_learning.q_step_argos(reward_from_environment, goal_state, done_steps)
 
 	if not goal then
 		take(action)
