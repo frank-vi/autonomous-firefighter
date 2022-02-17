@@ -8,8 +8,7 @@
   <framework>
     <system threads="0" />
     <experiment length="0"
-                ticks_per_second="10"
-     />
+                ticks_per_second="10" />
   </framework>
  
   <!-- *************** -->
@@ -17,14 +16,29 @@
   <!-- *************** -->
   <controllers>
  
-    <lua_controller id="lua">
+    <lua_controller id="firefighter">
       <actuators>
         <differential_steering implementation="default" noise_level="0.0"/>
+		<range_and_bearing implementation="default" />
       </actuators>
       <sensors>
 		<differential_steering implementation="default" noise_level="0.0" />
+		<range_and_bearing implementation="medium" medium="rab" />
+		<positioning implementation="default" />
       </sensors>
-      <params script="controller.lua" />
+      <params script="controller_firefighter.lua" />
+    </lua_controller>
+	
+	<lua_controller id="survivor">
+      <actuators>
+        <differential_steering implementation="default" noise_level="0.0"/>
+		<range_and_bearing implementation="default" />
+      </actuators>
+      <sensors>
+		<differential_steering implementation="default" noise_level="0.0" />
+		<range_and_bearing implementation="medium" medium="rab" />
+      </sensors>
+      <params script="controller_surviror.lua" />
     </lua_controller>
  
   </controllers>
@@ -33,7 +47,7 @@
   <!-- *********************** -->
   <!-- * Arena configuration * -->
   <!-- *********************** -->
-  <arena size="6, 3, 0" center="0,0,0" positional_grid_size="8,8,1">
+  <arena size="6, 3, 1" center="0,0,0.5">
   <floor id="f" source="image" path="floor.PNG" pixels_per_meter="100"/>
     
 	<!-- 4 walls to delimit arena -->
@@ -105,19 +119,20 @@
       <body position="0.85,-0.63,0" orientation="0,0,0" />
     </box>
 	
+	<!--
 	<distribute>
-		<position method="uniform" min="-3,-1.49,0" max="3,1.49,0" />
-		<orientation method="uniform" min="0,0,0" max="0,0,0" />
-		<entity quantity="1" max_trials="100">
+		<position method="uniform" min="-3,-1.49,0" max="1.98,1.49,0" />
+		<orientation method="constant" values="0,0,0" />
+		<entity quantity="10" max_trials="100">
 			<light id="light"
-				color="yellow"
+				color="red"
 			   intensity="1"
 			   medium="leds"/>
 		</entity>
     </distribute>
 	
 	<distribute>
-		<position method="uniform" min="-3,-1.49,0" max="3,1.49,0" />
+		<position method="uniform" min="-3,-1.49,0" max="1.98,1.49,0" />
 		<orientation method="uniform" min="0,0,0" max="360,0,0" />
 			<entity quantity="10" max_trials="100">
 				<box id="o" size="0.2, 0.2, 0.2" movable="false"/>
@@ -133,6 +148,16 @@
 			</foot-bot>
 		</entity>
     </distribute>
+	-->
+	<foot-bot id="fb_firefighter">
+	  <controller config="firefighter" />
+      <body position="0.6, -1.3,0" orientation="0,0,0" />
+	</foot-bot>
+	
+	<foot-bot id="fb_survivor">
+	  <controller config="survivor" />
+      <body position="-1.8, 0.4,0" orientation="0,0,0" />
+	</foot-bot>
 	
   </arena>
  
@@ -148,11 +173,13 @@
   <!-- ********* -->
   <media>
     <led id="leds" />
+	<range_and_bearing id="rab" index="grid" grid_size="1,1,1" />
   </media>
 
   <!-- ****************** -->
   <!-- * Visualization * -->
   <!-- ****************** -->
+ 
   <visualization>	
 	<qt-opengl lua_editor="false">
 		<camera>
