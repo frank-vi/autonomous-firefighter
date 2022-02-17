@@ -179,7 +179,7 @@
   <!-- ****************** -->
   <!-- * Visualization * -->
   <!-- ****************** -->
-  
+ 
   <visualization>	
 	<qt-opengl lua_editor="false">
 		<camera>
