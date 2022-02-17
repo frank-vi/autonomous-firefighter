@@ -28,6 +28,7 @@ local survivor_position = { x = -1.8, y = 0.4 }
 local previous_distance=0
 
 local feature_activations = { 0, 0, 0, 0, 0, 0, 0}
+local feature_activation_step = { 0, 0, 0, 0, 0, 0, 0}
 
 local consecutive_reward_steps = 0
 local consecutive_penalty_steps = 0
