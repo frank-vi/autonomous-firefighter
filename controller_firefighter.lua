@@ -28,9 +28,7 @@ local survivor_position = { x = -1.8, y = 0.4 }
 local previous_distance=0
 
 local feature_activations = { 0, 0, 0, 0, 0, 0, 0}
-local feature_activation_step = { 0, 0, 0, 0, 0, 0, 0}
 
-local consecutive_steps = 1
 local consecutive_reward_steps = 0
 local consecutive_penalty_steps = 0
 
@@ -202,27 +200,26 @@ end
 local reward = function()
 	local robot_position = nearest_robot_message()
 	local current_distance = robot_position.range
-	local rew = 0
+	local reward = 0
 	
 	if next(robot_position) and previous_distance ~= nil then
 		local is_closer = current_distance < previous_distance
-		local in_survivor_direction = -math.pi/18 <= robot_position.horizontal_bearing and robot_position.horizontal_bearing <= math.pi/18
+		local direction = robot_position.horizontal_bearing
+		local in_survivor_direction = -math.pi/18 <= direction and direction <= math.pi/18
 		
 		if in_survivor_direction and is_closer then
-			consecutive_steps = consecutive_steps + 1
-			survivor_direction = 100
-			pos = 100
+			direction_reward = 100
+			position_reward = 100
 		else
-			consecutive_steps = 1
-			survivor_direction = -100
-			pos = (current_distance > previous_distance) and -100 or 0
+			direction_reward = -100
+			position_reward = (current_distance > previous_distance) and -100 or 0
 		end
 		
-		rew = pos+survivor_direction
+		reward=position_reward+direction_reward
 	end
 	previous_distance = current_distance
 	
-	return rew
+	return reward
 end
 
 
