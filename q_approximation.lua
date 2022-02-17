@@ -100,7 +100,7 @@ local theta_update = function(delta)
 	local e_fn = function(eligibility_value)
 		return alpha*delta*eligibility_value
 	end
-	--print_matrix(eligibility_traces)
+	
 	local eligibility_contribution = Matrix.map(eligibility_traces, e_fn)
 	theta = Matrix.addition(eligibility_contribution, theta)
 end

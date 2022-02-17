@@ -3,16 +3,13 @@ local Q_learning = require 'q_approximation'
 
 local BIAS = 1.0
 -- learning rate
-local ALPHA = 0.3 -- next 0.6
+local ALPHA = 0.3
 -- discount factor
 local GAMMA = 0.9
 -- bootstrapping factor
 local LAMBDA = 0.8
 -- epsilon value for greedy action selection
 local EPSILON = 0.1
-
-local REWARD = 2
-local PENALTY = -3
 
 local MAX_VELOCITY = 10
 
